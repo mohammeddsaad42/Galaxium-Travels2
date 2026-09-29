@@ -223,9 +223,11 @@ def create_booking_from_hold(hold_data: dict, db: Session = Depends(get_db)):
     """Internal endpoint for Java hold service to create bookings.
 
     This endpoint is called by the Java inventory hold service when confirming a hold.
+    Uses the trusted internal booking path that skips the name-match user check
+    and auto-provisions users that exist in the hold service but not yet here.
     Returns HTTP 400 on booking failure so the Java service can detect and propagate the error.
     """
-    result = booking.book_flight(
+    result = booking.book_flight_from_hold(
         db,
         user_id=hold_data["travelerId"],
         name=hold_data["travelerName"],
