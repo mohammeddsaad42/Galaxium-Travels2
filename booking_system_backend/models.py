@@ -28,6 +28,9 @@ class Flight(Base):
     economy_seats_available = Column(Integer, nullable=False)  # 60% of total
     business_seats_available = Column(Integer, nullable=False)  # 30% of total
     galaxium_seats_available = Column(Integer, nullable=False)  # 10% of total
+    economy_capacity = Column(Integer, nullable=False)  # Original economy capacity
+    business_capacity = Column(Integer, nullable=False)  # Original business capacity
+    galaxium_capacity = Column(Integer, nullable=False)  # Original galaxium capacity
 
 class Booking(Base):
     __tablename__ = 'bookings'

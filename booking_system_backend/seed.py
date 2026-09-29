@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from db import SessionLocal, engine
 from models import Base, Booking, Flight, User
+from services.pricing import compute_price
 
 
 def seed():
@@ -71,7 +72,10 @@ def seed():
             base_price=base_price,
             economy_seats_available=economy_seats,
             business_seats_available=business_seats,
-            galaxium_seats_available=galaxium_seats
+            galaxium_seats_available=galaxium_seats,
+            economy_capacity=economy_seats,
+            business_capacity=business_seats,
+            galaxium_capacity=galaxium_seats,
         ))
     db.add_all(flights)
     db.commit()
@@ -91,14 +95,25 @@ def seed():
         seat_class = random.choices(seat_classes, weights=seat_class_weights)[0]
         booking_time = (now - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))).isoformat() + "Z"
         
-        # Get flight to calculate price_paid
+        # Get flight to calculate price_paid using dynamic pricing
         flight = db.query(Flight).filter(Flight.flight_id == flight_id).first()
-        if seat_class == 'economy':
-            price_paid = flight.base_price
-        elif seat_class == 'business':
-            price_paid = int(flight.base_price * 2.5)
-        else:  # galaxium
-            price_paid = flight.base_price * 5
+        seats_avail = (
+            flight.economy_seats_available if seat_class == 'economy'
+            else flight.business_seats_available if seat_class == 'business'
+            else flight.galaxium_seats_available
+        )
+        capacity = (
+            flight.economy_capacity if seat_class == 'economy'
+            else flight.business_capacity if seat_class == 'business'
+            else flight.galaxium_capacity
+        )
+        price_paid = compute_price(
+            base_price=flight.base_price,
+            seat_class=seat_class,
+            seats_available=seats_avail,
+            total_capacity=capacity,
+            departure_time_str=flight.departure_time,
+        )
         
         bookings.append(Booking(
             user_id=user_id,

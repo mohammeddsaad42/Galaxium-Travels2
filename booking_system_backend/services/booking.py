@@ -4,19 +4,14 @@ from sqlalchemy.orm import Session
 
 from models import Booking, Flight, User
 from schemas import BookingOut, ErrorResponse, SeatClass
-
-# Price multipliers for each seat class
-SEAT_CLASS_MULTIPLIERS = {
-    'economy': 1.0,
-    'business': 2.5,
-    'galaxium': 5.0
-}
+from services.pricing import compute_price
 
 
 def book_flight(db: Session, user_id: int, name: str, flight_id: int, seat_class: SeatClass = 'economy') -> BookingOut | ErrorResponse:
     """Book a seat on a specific flight for a user in the specified seat class."""
     # Validate seat class
-    if seat_class not in SEAT_CLASS_MULTIPLIERS:
+    valid_classes = ('economy', 'business', 'galaxium')
+    if seat_class not in valid_classes:
         return ErrorResponse(
             error="Invalid seat class",
             error_code="INVALID_SEAT_CLASS",
@@ -64,8 +59,24 @@ def book_flight(db: Session, user_id: int, name: str, flight_id: int, seat_class
                 details=f"User with ID {user_id} is not registered in our system. The user might need to register first, or you may need to check if the user_id is correct."
             )
 
-    # Calculate price based on seat class
-    price_paid = int(flight.base_price * SEAT_CLASS_MULTIPLIERS[seat_class])
+    # Calculate dynamic price at time of booking
+    seats_available = (
+        flight.economy_seats_available if seat_class == 'economy'
+        else flight.business_seats_available if seat_class == 'business'
+        else flight.galaxium_seats_available
+    )
+    total_capacity = (
+        flight.economy_capacity if seat_class == 'economy'
+        else flight.business_capacity if seat_class == 'business'
+        else flight.galaxium_capacity
+    )
+    price_paid = compute_price(
+        base_price=flight.base_price,
+        seat_class=seat_class,
+        seats_available=seats_available,
+        total_capacity=total_capacity,
+        departure_time_str=flight.departure_time,
+    )
 
     # Decrement the correct seat class counter
     if seat_class == 'economy':
