@@ -5,9 +5,20 @@ from sqlalchemy.orm import Session
 
 from models import Flight
 from schemas import ErrorResponse, FlightOut
+from services.pricing import compute_all_prices
 
 
 def _flight_to_out(f: Flight) -> FlightOut:
+    prices = compute_all_prices(
+        base_price=f.base_price,
+        economy_seats=f.economy_seats_available,
+        business_seats=f.business_seats_available,
+        galaxium_seats=f.galaxium_seats_available,
+        departure_time_str=f.departure_time,
+        economy_capacity=f.economy_capacity,
+        business_capacity=f.business_capacity,
+        galaxium_capacity=f.galaxium_capacity,
+    )
     return FlightOut(
         flight_id=f.flight_id,
         origin=f.origin,
@@ -18,9 +29,9 @@ def _flight_to_out(f: Flight) -> FlightOut:
         economy_seats_available=f.economy_seats_available,
         business_seats_available=f.business_seats_available,
         galaxium_seats_available=f.galaxium_seats_available,
-        economy_price=f.base_price,
-        business_price=int(f.base_price * 2.5),
-        galaxium_price=f.base_price * 5,
+        economy_price=prices['economy_price'],
+        business_price=prices['business_price'],
+        galaxium_price=prices['galaxium_price'],
     )
 
 
